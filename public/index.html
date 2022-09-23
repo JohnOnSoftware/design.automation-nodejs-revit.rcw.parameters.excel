@@ -10,14 +10,15 @@
   <script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.7/jstree.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.6.0/clipboard.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script> 
+
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.7/themes/default/style.min.css" />
 
   <!-- Autodesk Forge Viewer files -->
-  <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
-  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
-
-    <!-- this project files -->
+  <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css" type="text/css">
+  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+  
+  <!-- this project files -->
   <link href="css/main.css" rel="stylesheet" />
 
   <script src="/js/ForgeDesignAutomation.js"></script>
@@ -44,7 +45,7 @@
         <li>
             <div style="float: right; margin-top: 15px;">
                 <span style="padding-right: 5px;" data-toggle="modal" data-target="#provisionAccountModal" title="Enable my BIM 360 Account"><span
-                    class="glyphicon glyphicon-cog glyphiconTop mlink"> </span> Enable my BIM 360 Account</span>
+                    class="glyphicon glyphicon-cog glyphiconTop mlink"> </span> Enable my ACC|BIM 360 Account</span>
               </div>
         </li>
       </ul>
@@ -83,7 +84,7 @@
       <div class="col-sm-3 fill">
           <br/>
         <div>
-          <label><h4>Select Revit File</h4> </label>
+          <label><h4>Select Revit Cloud Model</h4> </label>
         </div>
         <div class="panel panel-default fill">
           <div class="panel-heading" data-toggle="tooltip" style="padding: 0px;">
@@ -93,7 +94,7 @@
             <div style="padding-top: 100px; text-align: center;">
               <br />
               <br />
-              <br /> You may also need to provision your<br /> BIM 360 Docs account for this app.<br />
+              <br /> You may also need to provision your<br /> ACC or BIM 360 account for this app.<br />
               <a href="https://forge.autodesk.com/blog/bim-360-docs-provisioning-forge-apps">Learn more</a>.
             </div>
           </div>
@@ -115,7 +116,7 @@
       <div class="col-sm-3 fill">
         <div class="row">
             <div style="padding-top: 10px; text-align: center;">
-                <h2><b>Revit Excel Export & Import</b></h2>
+                <h4><b>Revit Cloud Model Parameters Export & Import</b></h4>
             </div>
           </div>
         <div class="row ">
@@ -226,15 +227,13 @@
                         <b>Tip:</b> Make sure .ZIP bundles are placed at <b>/bundles/</b> folder
                     </div>
                     <div class="form-group">
-                        <label for="engines">Select engine:</label>
+                        <label for="engines">Select engine(Later than 2022 is supported):</label>
                         <select class="form-control" id="engines"> </select>
                     </div>
                     For this sample the .ZIP name is used as suffix to define <b>AppBundle</b> and <b>Activity</b>
                     names. Activities will have the following parameters: <br> 
-                    &nbsp&nbsp&nbsp&nbsp<b>inputFile:</b> Revit input file,  required for both Export and Import <br> 
-                    &nbsp&nbsp&nbsp&nbsp<b>inputJson:</b>  Parmeters, identify it's for Export or Import  <br>
+                    &nbsp&nbsp&nbsp&nbsp<b>inputJson:</b>  Parmeters including Project and Model GUID, and identify it's for Export or Import  <br>
                     &nbsp&nbsp&nbsp&nbsp<b>inputXls:</b>  Input Excel file,  required while importing <br>
-                    &nbsp&nbsp&nbsp&nbsp<b>outputRvt:</b> Output Revit file, required while importing  <br>
                     &nbsp&nbsp&nbsp&nbsp<b>outputXls:</b> Output Excel file, required while exporting  <br>
                     
                     <div style="text-align: left;">
@@ -275,7 +274,7 @@
             <h4 class="modal-title">Thanks for using this sample!</h4>
           </div>
           <div class="modal-body">
-            <p>To view your BIM 360 Docs files on this app please authorize my Forge Client ID with your BIM 360 Docs
+            <p>To view your Autodesk Docs files on this app please authorize my Forge Client ID with your Autodesk Docs
               Account.
             </p>
             <p>
@@ -315,7 +314,7 @@
             <h4 class="modal-title" id="myModalLabel1">Step-by-step guide</h4>
           </div>
           <div class="modal-body">
-            <p>To access your BIM 360 Docs files with this app, you need to connect your BIM 360 account with the app.</p>
+            <p>To access your Autodesk Docs files with this app, you need to connect your ACC account with the app.</p>
             <ol>
               <li>Log in to
                 <a href="https://bim360enterprise.autodesk.com/" target="_blank">BIM 360 Account Administration

@@ -34,6 +34,7 @@ using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 
 using DesignAutomationFramework;
+using Autodesk.Revit.DB.Events;
 
 using libxl;
 
@@ -66,7 +67,7 @@ namespace ExportImportExcel
             e.Succeeded = ProcessParameters(e.DesignAutomationData);
         }
 
-        public static bool ProcessParameters(DesignAutomationData data)
+        public bool ProcessParameters(DesignAutomationData data)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -75,23 +76,28 @@ namespace ExportImportExcel
             if (rvtApp == null)
                 throw new InvalidDataException(nameof(rvtApp));
 
-            string modelPath = data.FilePath;
-            if (String.IsNullOrWhiteSpace(modelPath))
-                throw new InvalidDataException(nameof(modelPath));
-
-            Document doc = data.RevitDoc;
-            if (doc == null)
-                throw new InvalidOperationException("Could not open document.");
-
             InputParams inputParams = InputParams.Parse("params.json");
+            if (inputParams == null)
+                throw new InvalidDataException("Cannot parse out input parameters correctly.");
 
+            Console.WriteLine("Got the input json file sucessfully.");
+
+            var cloudModelPath = ModelPathUtils.ConvertCloudGUIDsToCloudPath(ModelPathUtils.CloudRegionUS, inputParams.ProjectGuid, inputParams.ModelGuid);
+            rvtApp.FailuresProcessing += OnFailuresProcessing;
+
+            Console.WriteLine("Revit starts openning Revit Cloud Model");
+            Document doc = rvtApp.OpenDocumentFile(cloudModelPath, new OpenOptions());
+            if (doc == null)
+                throw new InvalidOperationException("Could not open Revit Cloud Model.");
+
+            Console.WriteLine("Revit Cloud Model is opened");
             if (inputParams.Export)
             {
-                return ExportToExcel( rvtApp, doc, inputParams.IncludeFireRating, inputParams.IncludeComments );
+                return ExportToExcel(rvtApp, doc, inputParams.IncludeFireRating, inputParams.IncludeComments);
             }
             else
             {
-                return ImportFromExcel(rvtApp, doc, inputParams.IncludeFireRating, inputParams.IncludeComments );
+                return ImportFromExcel(rvtApp, doc, inputParams.IncludeFireRating, inputParams.IncludeComments);
             }
         }
 
@@ -235,9 +241,19 @@ namespace ExportImportExcel
                 }
             }
 
-            ModelPath path = ModelPathUtils.ConvertUserVisiblePathToModelPath("result.rvt");
-            doc.SaveAs(path, new SaveAsOptions());
-            Console.WriteLine("Revit File is saved at "+ path.CentralServerPath);
+            if (doc.IsWorkshared) // work-shared/C4R model
+            {
+                SynchronizeWithCentralOptions swc = new SynchronizeWithCentralOptions();
+                swc.SetRelinquishOptions(new RelinquishOptions(true));
+                doc.SynchronizeWithCentral(new TransactWithCentralOptions(), swc);
+                Console.WriteLine($"***Syncing to Central is done!***");
+            }
+            else
+            {
+                // single user cloud model
+                doc.SaveCloudModel();
+            }
+            Console.WriteLine($"***Save Cloud Model/Sync to Cloud is done!***");
             return true;
         }
 
@@ -347,18 +363,33 @@ namespace ExportImportExcel
                 if (isInstance)
                 {
                     collector = new FilteredElementCollector(doc).WhereElementIsNotElementType();
-
                 }
                 else
                 {
                     collector = new FilteredElementCollector(doc).WhereElementIsElementType();
-
                 }
 
                 collector.OfCategory((BuiltInCategory)targetCategory);
                 elements = collector.ToList<Element>();
             }
             return elements;
+        }
+
+
+        // Simple upgrade failure processor that ignores all warnings and resolve all resolvable errors
+        private void OnFailuresProcessing(object sender, FailuresProcessingEventArgs e)
+        {
+            var fa = e?.GetFailuresAccessor();
+
+            fa.DeleteAllWarnings(); // Ignore all upgrade warnings
+            var failures = fa.GetFailureMessages();
+            if (!failures.Any())
+            {
+                return;
+            }
+
+            failures = failures.Where(fail => fail.HasResolutions()).ToList();
+            fa.ResolveFailures(failures);
         }
     }
 
@@ -371,12 +402,19 @@ namespace ExportImportExcel
         public bool Export { get; set; } = false;
         public bool IncludeFireRating { get; set; } = true;
         public bool IncludeComments { get; set; } = true;
+
+        public string Region { get; set; } = ModelPathUtils.CloudRegionUS;
+        [JsonProperty(PropertyName = "projectGuid", Required = Required.Default)]
+        public Guid ProjectGuid { get; set; } 
+        [JsonProperty(PropertyName = "modelGuid", Required = Required.Default)]
+        public Guid ModelGuid { get; set; }
+
         static public InputParams Parse(string jsonPath)
         {
             try
             {
                 if (!File.Exists(jsonPath))
-                    return new InputParams { Export = false, IncludeFireRating = true, IncludeComments = true };
+                    return new InputParams { Export = false, IncludeFireRating = true, IncludeComments = true, Region = ModelPathUtils.CloudRegionUS, ProjectGuid = new Guid(""), ModelGuid= new Guid("") };
 
                 string jsonContents = File.ReadAllText(jsonPath);
                 return JsonConvert.DeserializeObject<InputParams>(jsonContents);

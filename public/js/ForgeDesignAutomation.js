@@ -110,13 +110,13 @@ async function startWorkitem() {
 
     const fileName = instanceTree.get_text(sourceNode.parent);
     const fileNameParams = fileName.split('.');
-    if( fileNameParams[fileNameParams.length-1].toLowerCase() !== "rvt"){
+    if (fileNameParams[fileNameParams.length - 1].toLowerCase() !== "rvt") {
         alert('please select Revit project and try again');
         return;
     }
 
-    if( sourceNode.original.storage == null){
-        alert('Can not get the storage of the version');
+    if( sourceNode.original.revitCloudId == null ){
+        alert('Can not get the revit cloud guid from the version');
         return;
     }
 
@@ -129,18 +129,20 @@ async function startWorkitem() {
         return;
     }
 
+    const cloudParams = sourceNode.original.revitCloudId.split('|');
     const inputJson = { 
         Export : exporting,    
         IncludeFireRating : includeFireRating,
-        IncludeComments   : includeComments
+        IncludeComments   : includeComments,
+        ProjectGuid:    cloudParams[0],
+        ModelGuid:      cloudParams[1]
       };
-
       
     try {
         let res = null;
         if(exporting){
             updateStatus('started');
-            res = await exportExcel( sourceNode.original.storage, inputJson );
+            res = await exportExcel( inputJson );
             console.log('The parameters are exported');
         }
         else {
@@ -152,8 +154,7 @@ async function startWorkitem() {
             var file = _fileInputForm.files[0];
             const storageUrl = await uploadExcel(file);
             console.log( storageUrl );
-            // updateStatus('uploaded');
-            res = await importExcel( sourceNode.original.storage, storageUrl , inputJson,  sourceNode.parent, fileName );
+            res = await importExcel( storageUrl , inputJson,  sourceNode.parent, fileName );
             console.log('The parameters are imported');
         }
         console.log(res);
@@ -177,7 +178,6 @@ async function uploadExcel( file ){
 
     var formData = new FormData();
     formData.append('fileToUpload', file);
-    // formData.append('bucketKey', BUCKET_KEY);
 
     $.ajax({
         url: '/api/forge/datamanagement/v1/oss/object',
@@ -200,11 +200,11 @@ async function uploadExcel( file ){
 
 
 
-async function exportExcel( inputRvt, inputJson){
+async function exportExcel( inputJson){
     let def = $.Deferred();
   
     jQuery.get({
-        url: '/api/forge/da4revit/v1/revit/' + encodeURIComponent(inputRvt) + '/excel',
+        url: '/api/forge/da4revit/v1/revit/excel',
         contentType: 'application/json', // The data type was sent
         dataType: 'json', // The data type will be received
         data: inputJson,
@@ -220,11 +220,11 @@ async function exportExcel( inputRvt, inputJson){
 }
 
 
-async function importExcel( inputRvt, inputExcel, inputJson, itemId, fileName){
+async function importExcel( inputExcel, inputJson, itemId, fileName){
     let def = $.Deferred();
 
     jQuery.post({
-        url: '/api/forge/da4revit/v1/revit/' + encodeURIComponent(inputRvt) + '/excel',
+        url: '/api/forge/da4revit/v1/revit/excel',
         contentType: 'application/json', // The data type was sent
         dataType: 'json', // The data type will be received
         data: JSON.stringify({
@@ -315,7 +315,7 @@ function updateStatus(status, extraInfo = '') {
             break;
         case "success":
             setProgress(80, 'parametersUpdateProgressBar');
-            statusText.innerHTML = "<h4>Step 3/4: Creating a new version</h4>"
+            statusText.innerHTML = "<h4>Step 3/4: Publishing the latest Revit Cloud Model</h4>"
             upgradeBtnElm.disabled = true;
             cancelBtnElm.disabled = true;
             break;
@@ -324,7 +324,7 @@ function updateStatus(status, extraInfo = '') {
             statusText.innerHTML = 
                 exporting ? 
                     "<h4>Step 3/3: Done, Ready to <a href='" + extraInfo + "'>DOWNLOAD</a></h4>" 
-                   :"<h4>Step 4/4: Done, Check in BIM360</h4>";
+                   :"<h4>Step 4/4: Done, Check in Autodesk Docs</h4>";
             // Enable Create and Cancel button
             upgradeBtnElm.disabled = false;
             cancelBtnElm.disabled = true;

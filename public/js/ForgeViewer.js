@@ -20,7 +20,8 @@ var viewer;
 
 function launchViewer(urn) {
   var options = {
-    env: 'AutodeskProduction',
+    env: 'AutodeskProduction2',
+    api: 'streamingV2',
     getAccessToken: getForgeToken
   };
 

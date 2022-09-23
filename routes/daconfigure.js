@@ -216,29 +216,20 @@ router.post('/designautomation/activities', async( req, res, next) => {
         const activitySpec = {
             Id : activityName,
             Appbundles : [ qualifiedAppBundleId ],
-            CommandLine : [ "$(engine.path)\\\\revitcoreconsole.exe /i \"$(args[inputFile].path)\" /al \"$(appbundles[" + appBundleName + "].path)\"" ],
+            CommandLine : [ "$(engine.path)\\\\revitcoreconsole.exe /al \"$(appbundles[" + appBundleName + "].path)\"" ],
             Engine : engineName,
             Parameters :
             {
-                inputFile: {
-                    verb: "get",
-                    description: "input file",
-                    required: true
-                },
                 inputJson: {
                     verb: "get",
                     description: "input Json parameters",
-                    localName: "params.json"
+                    localName: "params.json",
+                    required: true
                 },
                 inputXls: {
                     verb: "get",
                     description: "input excel file",
                     localName: "input.xls"
-                },
-                outputRvt: {
-                    verb: "put",
-                    description: "output Rvt file",
-                    localName: "result.rvt"
                 },
                 outputXls: {
                     verb: "put",

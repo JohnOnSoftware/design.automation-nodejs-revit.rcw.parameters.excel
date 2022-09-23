@@ -1,4 +1,4 @@
-# design.automation-nodejs-revit.parameters.excel
+# design.automation-nodejs-revit.rcw.parameters.excel
 
 [![Node.js](https://img.shields.io/badge/Node.js-8.0-blue.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/badge/npm-4.0-blue.svg)](https://www.npmjs.com/)
@@ -17,21 +17,22 @@
 [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](http://opensource.org/licenses/MIT)
 
 # Description
-This sample demonstrates how to update a file-based Revit model stored in BIM 360 Docs, using Design Automation for Revit. The sample does two things:
-1. export Revit parameters (Door Type Parameter “Fire Rating”, and/or Door Instance Parameter “Comments”) to an excel file.
-2. Import Revit parameters (same as above) from a locally stored excel file.
+This sample is based on [design.automation-nodejs-revit.parameters.excel](https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel), it works almost as same as [design.automation-nodejs-revit.parameters.excel](https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel), refer to that sample for the general workflow.
+
+With this sample, the only enhancement is to support Reviv Cloud Model. The sample demonstrates how to update a Revit Cloud Model stored in Autodesk Docs, using the new engine(later than Revit 2022) of Design Automation for Revit. The sample does two things:
+1. export parameters (Door Type Parameter “Fire Rating”, and/or Door Instance Parameter “Comments”) of Revit Cloud Model to an excel file.
+2. Import parameters (same as above) from a locally stored excel file to Revit Cloud Model.
  
 The custom button in a viewer is provided to make it easier to see the parameter values. You can also see the values in the default property panel as well.
- 
 
 # Thumbnail
 ![thumbnail](/thumbnail.png)
 
 # Demonstration
-[![https://youtu.be/nOAEzimdq5Q](http://img.youtube.com/vi/nOAEzimdq5Q/0.jpg)](http://www.youtube.com/watch?v=nOAEzimdq5Q "Export|Import Revit parameter values to|from Excel")
+[![https://youtu.be/nOAEzimdq5Q](http://img.youtube.com/vi/nOAEzimdq5Q/0.jpg)](http://www.youtube.com/watch?v=nOAEzimdq5Q "Export|Import Revit Cloud Model parameter values to|from Excel")
 
 # Live Demo
-[https://revitexcel2020.herokuapp.com/](https://revitexcel2020.herokuapp.com/)
+[https://rcwexcel.herokuapp.com/](https://rcwexcel.herokuapp.com/)
 
 # Main Parts of The Work
 1. Create a Revit Plugin to be used within AppBundle of Design Automation for Revit. Please check [PlugIn](./ExportImportExcelPlugin/) 
@@ -60,7 +61,7 @@ Install [NodeJS](https://nodejs.org), version 8 or newer.
 
 Clone this project or download it (this `nodejs` branch only). It's recommended to install [GitHub desktop](https://desktop.github.com/). To clone it via command line, use the following (**Terminal** on MacOSX/Linux, **Git Shell** on Windows):
 
-    git clone https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel
+    git clone https://github.com/Autodesk-Forge/design.automation-nodejs-revit.rcw.parameters.excel
 
 Install the required packages using `npm install`.
 
@@ -116,7 +117,7 @@ environment variable examples:
 
 Open the browser: [http://localhost:3000](http://localhost:3000), it provides the abilities to export & import parameter with Excel: 
 
-1. Select Revit file version in BIM360 Hub to view the Model, Select parameters which you want to export|import, choose either export or import and click 'Execute'.
+1. Select Revit Cloud Model file version in Autodesk Docs to view the Model, Select parameters which you want to export|import, choose either export or import and click 'Execute'.
 2. Select the Door type or instance in Model Viewer, and open the customized property panel to see the result.
 
 `Note`: When you deploy the app, you have to open the `Configure` button to create the AppBundle & Activity before running the Export|Import feature, please check the video for the steps at [https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko). You can also delete the existing AppBundle & Activity and re-create with different Design Automation Revit engine version.
@@ -125,7 +126,7 @@ Open the browser: [http://localhost:3000](http://localhost:3000), it provides th
 
 To deploy this application to Heroku, the **Callback URL** for Forge must use your `.herokuapp.com` address. After clicking on the button below, at the Heroku Create New App page, set your Client ID, Secret, Callback URL and Revit Design Automation variables for Forge.
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Autodesk-Forge/design.automation-nodejs-revit.rcw.parameters.excel)
 
 Watch [this video](https://www.youtube.com/watch?v=Oqa9O20Gj0c) on how deploy samples to Heroku.
 
@@ -156,11 +157,9 @@ After installing Github desktop for Windows, on the Git Shell, if you see a ***e
 
 ## Limitation
 - Before using the sample to call the workitem, you need to setup your Appbundle & Activity of Design Automation, you can follow my Postman script to understand the whole process, or you can simply use the `Configure` button in the Web Application to create the Appbundle & Activity([https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko)). 
-- Currently Revit Cloud Worksharing is not supported by the Design Automation.  The scenario that this sample demonstrates is applicable only with a file-based Revit model. 
 - The free version of [LibXL](http://www.libxl.com) I used will write a banner in the first row of each spreadsheet and it will be able to read only 300 cells (first row is unavailable). If you want to remove banner and reading restriction, you may contact them for a license.
 - It takes time for BIM360 to automatically translate the new uploaded Revit file version, please wait for a while to see the viewable and properties.
 - Client JavaScript requires modern browser.
-- Currently, the sample support Design Automation engine 2019 & 2020, you can use `Configure` button to delete|create different versions of Design Automation Revit engine.
 
 ## License
 
@@ -169,4 +168,3 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 ## Written by
 
 Zhong Wu [@johnonsoftware](https://twitter.com/johnonsoftware), [Forge Partner Development](http://forge.autodesk.com)
-Eason Kang [@yiskang](https://twitter.com/yiskang), [Forge Partner Development](http://forge.autodesk.com)

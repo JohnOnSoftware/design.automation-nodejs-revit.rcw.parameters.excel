@@ -157,14 +157,18 @@ async function getFolderContents(projectId, folderId, oauthClient, credentials, 
     const contents = await folders.getFolderContents(projectId, folderId, {}, oauthClient, credentials);
     const treeNodes = contents.body.data.map((item) => {
         var name = (item.attributes.displayName !== null ? item.attributes.displayName : item.attributes.name);
-        if (name !== '') { // BIM 360 Items with no displayName also don't have storage, so not file to transfer
+        // only RCM models
+        if (name == '' ) { // BIM 360 Items with no displayName also don't have storage, so not file to transfer
+            return null;
+        } 
+        if(item.attributes.extension.type == "items:autodesk.bim360:C4RModel" || item.attributes.extension.type == "folders:autodesk.bim360:Folder" ){
             return createTreeNode(
                 item.links.self.href,
                 name,
                 item.type,
                 true
             );
-        } else {
+        }else{
             return null;
         }
     });
@@ -180,12 +184,14 @@ async function getVersions(projectId, itemId, oauthClient, credentials, res) {
         const versionst = version.id.match(/^(.*)\?version=(\d+)$/)[2];
         const viewerUrn = (version.relationships != null && version.relationships.derivatives != null ? version.relationships.derivatives.data.id : null);
         const versionStorage = (version.relationships != null && version.relationships.storage != null &&  version.relationships.storage.meta != null && version.relationships.storage.meta.link != null? version.relationships.storage.meta.link.href : null);
+        const revitCloudModelId = version.attributes.extension.data.projectGuid + '|'+version.attributes.extension.data.modelGuid;
         return createTreeNode(
             viewerUrn,
             decodeURI('v' + versionst + ': ' + dateFormated + ' by ' + version.attributes.lastModifiedUserName),
             (viewerUrn != null ? 'versions' : 'unsupported'),
             false,
-            versionStorage
+            versionStorage,
+            revitCloudModelId
         );
     })
     res.json(versions_json.filter(node=>node!=null));
@@ -243,8 +249,8 @@ async function getVersionRef(projectId, viewUrnId, oauthClient, credentials) {
 }
 
 // Format data for tree
-function createTreeNode(_id, _text, _type, _children, _storage = null) {
-    return { id: _id, text: _text, type: _type, children: _children, storage: _storage };
+function createTreeNode(_id, _text, _type, _children, _storage = null, _revitCloudId=null ) {
+    return { id: _id, text: _text, type: _type, children: _children, storage: _storage, revitCloudId: _revitCloudId };
 }
 
 module.exports = {

@@ -20,25 +20,23 @@ const express = require('express');
 const { credentials }= require('../config');
 
 const {
-    ItemsApi,
-    VersionsApi,
     BucketsApi,
     ObjectsApi,
-    PostBucketsSigned
+    PostBucketsSigned,
+    CommandsApi,
 } = require('forge-apis');
 
 const { OAuth } = require('./common/oauthImp');
 
 const { 
+    delay,
     getWorkitemStatus, 
     cancelWorkitem,
     exportExcel,
     importExcel,
-    getLatestVersionInfo, 
-    getNewCreatedStorageInfo, 
-    createBodyOfPostVersion,
+    createBodyOfPublishCloudModel,
     workitemList 
-} = require('./common/da4revitImp')
+} = require('./common/da4revitImp');
 
 const SOCKET_TOPIC_WORKITEM = 'Workitem-Notification';
 const Temp_Output_File_Name = 'RevitParams.xls';
@@ -64,11 +62,9 @@ router.use(async (req, res, next) => {
 ///////////////////////////////////////////////////////////////////////
 /// Export parameters to Excel from Revit
 ///////////////////////////////////////////////////////////////////////
-router.get('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) => {
+router.get('/da4revit/v1/revit/excel', async (req, res, next) => {
     const inputJson = req.query;
-    const inputRvtUrl = (req.params.version_storage);
-
-    if ( inputJson === '' || inputRvtUrl === '') {
+    if ( inputJson === '' ) {
         res.status(400).end('make sure the input version id has correct value');
         return;
     }
@@ -92,10 +88,10 @@ router.get('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) =
 
     try {
         const objectApi = new ObjectsApi();
-        const object = await objectApi.uploadObject(bucketKey, Temp_Output_File_Name, 0, '', {}, oauth_client, oauth_token);
+        const object = await objectApi.uploadObject(bucketKey, Temp_Output_File_Name, 1, '', {}, oauth_client, oauth_token);
         const signedObj = await objectApi.createSignedResource(bucketKey, object.body.objectKey, new PostBucketsSigned(minutesExpiration = 50), {access:'readwrite'}, oauth_client, oauth_token)
 
-        let result = await exportExcel(inputRvtUrl, inputJson, signedObj.body.signedUrl, req.oauth_token, oauth_token);
+        let result = await exportExcel( inputJson, signedObj.body.signedUrl, req.oauth_token, oauth_token);
         if (result === null || result.statusCode !== 200) {
             console.log('failed to export the excel file');
             res.status(500).end('failed to export the excel file');
@@ -122,18 +118,17 @@ router.get('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) =
 
 
 ///////////////////////////////////////////////////////////////////////
-/// Import parameters from Excel to Revit
+/// Import parameters from Excel to Revit Cloud Model
 ///
 ///////////////////////////////////////////////////////////////////////
-router.post('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) => {
-    const inputRvtUrl = req.params.version_storage; // input Url of Revit file
+router.post('/da4revit/v1/revit/excel', async (req, res, next) => {
     const inputExcUrl  = req.body.InputExcUrl; // input Url of Excel file
     const inputJson  = req.body.Data;    // input parameters for DA
-    const fileItemId   = req.body.ItemUrl; // item url used to get info to upload new version of BIM360 Revit file.
+    const fileItemId   = req.body.ItemUrl; // item url used to get info to pulish Revit cloud model.
     const fileItemName = req.body.FileItemName; // file name
 
 
-    if ( inputJson === '' || inputRvtUrl === '' || inputExcUrl === '' || fileItemName === '' || fileItemId === '') {
+    if ( inputJson === '' || inputExcUrl === '' || fileItemName === '' || fileItemId === '') {
         res.status(400).end('Missing input data');
         return;
     }
@@ -149,44 +144,11 @@ router.post('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) 
         return;
     }
 
-    const resourceId = params[params.length - 1];
+    const itemId = params[params.length - 1];
     const projectId = params[params.length - 3];
 
     try {
-        const items = new ItemsApi();
-        const folder = await items.getItemParentFolder(projectId, resourceId, req.oauth_client, req.oauth_token);
-        if(folder === null || folder.statusCode !== 200){
-            console.log('failed to get the parent folder.');
-            res.status(500).end('failed to get the parent folder');
-            return;
-        }
-
-        // create storage for the new uploaded Revit vesion
-        const storageInfo = await getNewCreatedStorageInfo(projectId, folder.body.data.id, fileItemName, req.oauth_client, req.oauth_token);
-        if (storageInfo === null ) {
-            console.log('failed to create the storage');
-            res.status(500).end('failed to create the storage');
-            return;
-        }
-        const outputUrl = storageInfo.StorageUrl;
-
-
-        // get the storage of the input item version
-        const versionInfo = await getLatestVersionInfo(projectId, resourceId, req.oauth_client, req.oauth_token);
-        if (versionInfo === null) {
-            console.log('failed to get lastest version of the file');
-            res.status(500).end('failed to get lastest version of the file');
-            return;
-        }
-
-        const createVersionBody = createBodyOfPostVersion(resourceId,fileItemName, storageInfo.StorageId, versionInfo.versionType);
-        if (createVersionBody === null ) {
-            console.log('failed to create body of Post Version');
-            res.status(500).end('failed to create body of Post Version');
-            return;
-        }
-
-
+        const publishCloudModelBody = createBodyOfPublishCloudModel( itemId);
         ////////////////////////////////////////////////////////////////////////////////
         // use 2 legged token for design automation
         const oauth = new OAuth(req.session);
@@ -194,10 +156,10 @@ router.post('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) 
         const oauth_token = await oauth_client.authenticate();
 
         // call to import Excel file to update parameters in Revit
-        let result = await importExcel(inputRvtUrl, inputExcUrl, inputJson, outputUrl, projectId, createVersionBody, req.oauth_token, oauth_token);
+        let result = await importExcel(inputExcUrl, inputJson, projectId, publishCloudModelBody, req.oauth_token, oauth_token);
         if (result === null || result.statusCode !== 200) {
-            console.log('failed to import parameters to the revit file');
-            res.status(500).end('failed to import parameters to the revit file');
+            console.log('failed to import parameters to the revit cloud model');
+            res.status(500).end('failed to import parameters to the revit cloud model');
             return;
         }
         console.log('Submitted the workitem: '+ result.body.id);
@@ -209,7 +171,7 @@ router.post('/da4revit/v1/revit/:version_storage/excel', async (req, res, next) 
         res.status(200).end(JSON.stringify(exportInfo));
 
     } catch (err) {
-        console.log('get exception while importing parameters from Excel')
+        console.log('get exception while importing parameters from Excel '+err)
         let workitemStatus = {
             'Status': "Failed"
         };
@@ -295,23 +257,27 @@ router.post('/callback/designautomation', async (req, res, next) => {
         }
         let index = workitemList.indexOf(workitem);
 
-        if (workitem.createVersionData !== null) {
+        // publish the cloud model if it's changed
+        if (workitem.cloudModelBody != null ) {
             workitemStatus.Status = 'Success';
             global.MyApp.SocketIo.emit(SOCKET_TOPIC_WORKITEM, workitemStatus);
-            console.log("Create new version by the workitem:  " + workitem.workitemId);
-
-            try {
-                const versions = new VersionsApi();
-                version = await versions.postVersion(workitem.projectId, workitem.createVersionData, req.oauth_client, workitem.access_token_3Legged);
-                if (version === null || version.statusCode !== 201) {
-                    console.log('Falied to create a new version of the file');
-                    workitemStatus.Status = 'Failed'
-                } else {
-                    console.log('Successfully created a new version of the file');
-                    workitemStatus.Status = 'Completed';
+            console.log("Publish the latest cloud model for the workitem:  " + workitem.workitemId);
+            const itemId = workitem.cloudModelBody.data.relationships.resources.data[0].id;
+            try{
+                const commandApi = new CommandsApi();
+                await commandApi.publishModel( workitem.projectId, workitem.cloudModelBody,{}, req.oauth_client, workitem.access_token_3Legged );
+                // check if the revit cloud model is published successfully
+                let retryTime = 3;
+                while (retryTime-- > 0) {
+                    await delay(5000);
+                    const statusRes = await commandApi.getPublishModelJob(workitem.projectId, workitem.cloudModelBody, {}, req.oauth_client, workitem.access_token_3Legged);
+                    if (statusRes.body.data && statusRes.body.data.attributes.status === "complete")
+                        break;
                 }
-            } catch (err) {
-                console.log(err);
+                console.log('Successfully published a new version of the file');
+                workitemStatus.Status = 'Completed';
+            }catch(err){
+                console.log("Failed to publish the cloud model due to "+ err);
                 workitemStatus.Status = 'Failed';
             }
         } else {
@@ -321,9 +287,6 @@ router.post('/callback/designautomation', async (req, res, next) => {
         global.MyApp.SocketIo.emit(SOCKET_TOPIC_WORKITEM, workitemStatus);
         // Remove the workitem after it's done
         workitemList.splice(index, 1);
-
-
-
     }else{
         // Report if not successful.
         workitemStatus.Status = 'Failed';
@@ -332,7 +295,6 @@ router.post('/callback/designautomation', async (req, res, next) => {
     }
     return;
 })
-
 
 
 module.exports = router;
