@@ -1,7 +1,7 @@
 # design.automation-nodejs-revit.rcw.parameters.excel
 
-[![Node.js](https://img.shields.io/badge/Node.js-8.0-blue.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-4.0-blue.svg)](https://www.npmjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-14.0-blue.svg)](https://nodejs.org/)
+[![npm](https://img.shields.io/badge/npm-6.0-blue.svg)](https://www.npmjs.com/)
 ![Platforms](https://img.shields.io/badge/Web-Windows%20%7C%20MacOS%20%7C%20Linux-lightgray.svg)
 [![Data-Management](https://img.shields.io/badge/Data%20Management-v1-green.svg)](http://developer.autodesk.com/)
 [![Design-Automation](https://img.shields.io/badge/Design%20Automation-v3-green.svg)](http://developer.autodesk.com/)
@@ -9,8 +9,8 @@
 
 
 ![Windows](https://img.shields.io/badge/Plugins-Windows-lightgrey.svg)
-![.NET](https://img.shields.io/badge/.NET%20Framework-4.7-blue.svg)
-[![Revit-2019](https://img.shields.io/badge/Revit-2019-lightgrey.svg)](http://autodesk.com/revit)
+![.NET](https://img.shields.io/badge/.NET%20Framework-4.8-blue.svg)
+[![Revit-2023](https://img.shields.io/badge/Revit-2023-lightgrey.svg)](http://autodesk.com/revit)
 
 
 ![Advanced](https://img.shields.io/badge/Level-Advanced-red.svg)
@@ -19,11 +19,56 @@
 # Description
 This sample is based on [design.automation-nodejs-revit.parameters.excel](https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel), it works almost as same as [design.automation-nodejs-revit.parameters.excel](https://github.com/Autodesk-Forge/design.automation-nodejs-revit.parameters.excel), refer to that sample for the general workflow.
 
-With this sample, the only enhancement is to support Reviv Cloud Model. The sample demonstrates how to update a Revit Cloud Model stored in Autodesk Docs, using the new engine(later than Revit 2022) of Design Automation for Revit. The sample does two things:
+The only change of this sample is to support Reviv Cloud Model. The sample demonstrates how to update a Revit Cloud Model stored in Autodesk Docs, using the new engine(later than Revit 2022) of Design Automation for Revit. 
+
+The sample does two things:
 1. export parameters (Door Type Parameter “Fire Rating”, and/or Door Instance Parameter “Comments”) of Revit Cloud Model to an excel file.
 2. Import parameters (same as above) from a locally stored excel file to Revit Cloud Model.
  
 The custom button in a viewer is provided to make it easier to see the parameter values. You can also see the values in the default property panel as well.
+
+# Techenique 
+Highlight the techenique change to support Revit Cloud Model:
+
+1. The user's 3 Legged token is required by the Revit Design Automation plugin to handle the Revit Cloud Model, it can be passed as `adsk3LeggedTokenin` in the workitme as follow:
+
+        {
+            inputXls: {
+                url: "XXXXXXXXXX"
+            },
+            onComplete: {
+                verb: "post",
+                    url: designAutomation.webhook_url
+            },
+            adsk3LeggedToken: access_token
+        }
+
+2. Instead of providing the storage link of the Revit model as input or output url, accessing the Revit Cloud Model only requires the Cloud information including `Region`, `ProjectGuid`, `ModelGuid`. These info can be passed within a JSON file in workitem, and Revit plugin  will open/save the Revit Cloud Model like: 
+
+    `Open Revit Cloud Model` 
+
+        var cloudModelPath = ModelPathUtils.ConvertCloudGUIDsToCloudPath(inputParams.Region, inputParams.ProjectGuid, inputParams.ModelGuid);
+        Document doc = rvtApp.OpenDocumentFile(cloudModelPath, new OpenOptions());
+
+    `Save Revit Cloud Model`
+
+         if (doc.IsWorkshared)
+         {
+            SynchronizeWithCentralOptions swc = new SynchronizeWithCentralOptions();
+            swc.SetRelinquishOptions(new RelinquishOptions(true));
+            doc.SynchronizeWithCentral(new TransactWithCentralOptions(), swc);
+         }
+         else
+         {
+            // Single user cloud model
+            doc.SaveCloudModel();
+         }
+
+3. Within the Revit plugin, Revit API cann only synchronize the work-shared model with central, no Revit API to publish the model, you can actually publish the Revit Cloud Model by [PublishModel API](https://forge.autodesk.com/en/docs/data/v2/reference/http/PublishModel/) in the `onComplete` callback like:
+
+                const commandApi = new CommandsApi();
+                await commandApi.publishModel( workitem.projectId, workitem.cloudModelBody,{}, req.oauth_client, workitem.access_token_3Legged );
+
 
 # Thumbnail
 ![thumbnail](/thumbnail.png)
@@ -37,7 +82,7 @@ The custom button in a viewer is provided to make it easier to see the parameter
 # Main Parts of The Work
 1. Create a Revit Plugin to be used within AppBundle of Design Automation for Revit. Please check [PlugIn](./ExportImportExcelPlugin/) 
 
-2. Create your App, upload the AppBundle, define your Activity and test the workitem with the Postman collection under [Postman Collection](./PostmanCollection/), or you can refer ([https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko)) and simply use the `Configure` button in the Web Application to create the Appbundle & Activity. 
+2. Create your App, upload the AppBundle, define your Activity, you can refer ([https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko)) and simply use the `Configure` button in the Web Application to create the Appbundle & Activity. 
 
 3. Create the Web App to call the workitem.
 
@@ -156,10 +201,13 @@ After installing Github desktop for Windows, on the Git Shell, if you see a ***e
     git config --global http.sslverify "false"
 
 ## Limitation
-- Before using the sample to call the workitem, you need to setup your Appbundle & Activity of Design Automation, you can follow my Postman script to understand the whole process, or you can simply use the `Configure` button in the Web Application to create the Appbundle & Activity([https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko)). 
 - The free version of [LibXL](http://www.libxl.com) I used will write a banner in the first row of each spreadsheet and it will be able to read only 300 cells (first row is unavailable). If you want to remove banner and reading restriction, you may contact them for a license.
+
+## Tips & Tricks
+- Before using the sample to call the workitem, you need to setup your Appbundle & Activity of Design Automation, you can follow my Postman script to understand the whole process, or you can simply use the `Configure` button in the Web Application to create the Appbundle & Activity([https://youtu.be/1NCeH7acIko](https://youtu.be/1NCeH7acIko)). 
 - It takes time for BIM360 to automatically translate the new uploaded Revit file version, please wait for a while to see the viewable and properties.
 - Client JavaScript requires modern browser.
+
 
 ## License
 

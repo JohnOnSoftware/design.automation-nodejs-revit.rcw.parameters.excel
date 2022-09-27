@@ -19,25 +19,7 @@ const request = require("request");
 
 const { designAutomation }= require('../../config');
 
-// const {
-//     ProjectsApi, 
-//     ItemsApi,
-//     StorageRelationshipsTarget,
-//     CreateStorageDataRelationships,
-//     CreateStorageDataAttributes,
-//     CreateStorageData,
-//     CreateStorage,
-//     CreateVersion,
-//     CreateVersionData,
-//     CreateVersionDataRelationships,
-//     CreateItemRelationshipsStorageData,
-//     CreateItemRelationshipsStorage,
-//     CreateVersionDataRelationshipsItem,
-//     CreateVersionDataRelationshipsItemData,
 
-//     StorageRelationshipsTargetData,
-//     BaseAttributesExtensionObject,
-// } = require('forge-apis');
 
 var workitemList = [];
 
