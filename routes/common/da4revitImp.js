@@ -188,7 +188,7 @@ function importExcel( inputExcUrl, inputJson, projectId, publishCloudModelBody, 
 }
 
 
-function exportExcel( inputJson, outputExlUrl, access_token_3Legged, access_token_2Legged) {
+function exportExcel( inputJson, outputExlUrl, signedS3Info, access_token_3Legged, access_token_2Legged) {
 
     return new Promise(function (resolve, reject) {
 
@@ -233,7 +233,8 @@ function exportExcel( inputJson, outputExlUrl, access_token_3Legged, access_toke
                 }
                 workitemList.push({
                     workitemId: resp.id,
-                    outputUrl: outputExlUrl
+                    signedS3Info: signedS3Info,
+                    access_token_2Legged: access_token_2Legged
                 })
 
                 if (response.statusCode >= 400) {

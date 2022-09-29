@@ -88,11 +88,15 @@ router.get('/da4revit/v1/revit/excel', async (req, res, next) => {
     };
 
     try {
+        // migrate to use new S3 upload API
         const objectApi = new ObjectsApi();
-        const object = await objectApi.uploadObject(bucketKey, Temp_Output_File_Name, 1, '', {}, oauth_client, oauth_token);
-        const signedObj = await objectApi.createSignedResource(bucketKey, object.body.objectKey, new PostBucketsSigned(minutesExpiration = 50), {access:'readwrite'}, oauth_client, oauth_token)
-
-        let result = await exportExcel( inputJson, signedObj.body.signedUrl, req.oauth_token, oauth_token);
+        var response = await objectApi.getS3UploadURL(bucketKey, Temp_Output_File_Name, null, oauth_client, oauth_token);
+        const signedS3Info = {
+            BucketKey: bucketKey,
+            ObjectKey: Temp_Output_File_Name,
+            UploadKey: response.body.uploadKey
+        };
+        let result = await exportExcel( inputJson, response.body.urls[0], signedS3Info, req.oauth_token, oauth_token);
         if (result === null || result.statusCode !== 200) {
             console.log('failed to export the excel file');
             res.status(500).end('failed to export the excel file');
@@ -281,9 +285,20 @@ router.post('/callback/designautomation', async (req, res, next) => {
                 console.log("Failed to publish the cloud model due to "+ err);
                 workitemStatus.Status = 'Failed';
             }
-        } else {
-            workitemStatus.Status = 'Completed';
-            workitemStatus.ExtraInfo = workitem.outputUrl;
+        } else if( workitem.signedS3Info ) {
+            // Call to complete the S3 upload the excel file.
+            try{
+                const objectApi = new ObjectsApi();
+                const res = await objectApi.completeS3Upload(workitem.signedS3Info.BucketKey, workitem.signedS3Info.ObjectKey, { uploadKey: workitem.signedS3Info.UploadKey }, null, req.oauth_client, workitem.access_token_2Legged)
+                const downloadInfo = await objectApi.getS3DownloadURL( res.body.bucketKey, res.body.objectKey, null, req.oauth_client, workitem.access_token_2Legged );
+                workitemStatus.Status = 'Completed';
+                workitemStatus.ExtraInfo = downloadInfo.body.url;
+            }catch(err){
+                console.log("Failed to upload the output excel due to "+ err);
+                workitemStatus.Status = 'Failed';
+            }
+        }else{
+            workitemStatus.Status = 'Failed';
         }
         global.MyApp.SocketIo.emit(SOCKET_TOPIC_WORKITEM, workitemStatus);
         // Remove the workitem after it's done
